@@ -2,9 +2,9 @@ name: PADF Data Pipeline
 
 on:
   schedule:
-    # Ejecutar cada 2 horas
+    # Ejecuta cada 2 horas (CRON en UTC)
     - cron: "0 */2 * * *"
-  workflow_dispatch: # Permite ejecución manual
+  workflow_dispatch:
 
 jobs:
   run-padf-pipeline:
@@ -18,17 +18,33 @@ jobs:
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: '4.3.2'
+          use-public-rspm: true
 
-      - name: Set up R dependencies
-        run: |
-          install.packages("pacman")
-          library(pacman)
-          pacman::p_load(
-            dplyr, tidyr, httr, jsonlite,
-            googledrive, googlesheets4, writexl,
-            haven, stringr, labelled, lubridate,
-            gtsummary, dotenv, readxl, tibble, sf, purrr
-          )
+      # Instala dependencias de R y system requirements (incl. para 'sf')
+      # usando pak; 'extra-packages' asegura que se instalen y cacheen.
+      - name: Set up R dependencies (pak)
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          cache-version: 1
+          extra-packages: |
+            any::pacman
+            any::dplyr
+            any::tidyr
+            any::httr
+            any::jsonlite
+            any::googledrive
+            any::googlesheets4
+            any::writexl
+            any::haven
+            any::stringr
+            any::labelled
+            any::lubridate
+            any::gtsummary
+            any::dotenv
+            any::readxl
+            any::tibble
+            any::sf
+            any::purrr
 
       - name: Run PADF master script
         env:
