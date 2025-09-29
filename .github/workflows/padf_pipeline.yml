@@ -59,4 +59,4 @@ jobs:
           IDALERTAS: ${{ secrets.IDALERTAS }}
           IDKEYS: ${{ secrets.IDKEYS }}
         run: |
-          Rscript master_script_PADF.R
+          Rscript PADF_master_script.R
