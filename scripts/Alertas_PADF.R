@@ -340,7 +340,7 @@ alertas <- alertas %>%
     m_actividades_sino = if_else(is.na(actividades_sino) & consent == 1, 1, 0),
     m_seguridad_sino = if_else(is.na(seguridad_sino) & consent == 1 & actividades_sino == 1, 1, 0),
     m_padf = if_else(is.na(padf) & consent == 1, 1, 0),
-    m_padf2 = if_else(is.na(padf2) & consent == 1 & padf == 1, 1, 0)
+    m_padf2 = if_else(is.na(padf2) & consent == 1 & padf == 1 & actividades_sino == 1 & seguridad_sino == 1, 1, 0)
   )
 
 variables_missing <- c(
