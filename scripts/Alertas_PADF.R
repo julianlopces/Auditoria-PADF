@@ -59,7 +59,8 @@ data <- data %>%
     SubmissionDate = mdy_hms(SubmissionDate, tz = "UTC", locale = "C"),
     starttime = with_tz(starttime, tzone = "America/Lima"),
     endtime = with_tz(endtime, tzone = "America/Lima"),
-    SubmissionDate = with_tz(SubmissionDate, tzone = "America/Lima"))
+    SubmissionDate = with_tz(SubmissionDate, tzone = "America/Lima"),
+    endtime_fixed = as.character(endtime))
 
 # Último estado (Tracking)
 
