@@ -1,7 +1,7 @@
 #### Script PADF --------------------------------------------------------------
 # Proyecto: PADF
 # Este script crea las alertas de auditoría y exporta los resultados a Google Sheets
-# ejemplo Gaby
+# ejemplo Julian
 rm(list = ls())
 
 if (!require("pacman")) install.packages("pacman")
