@@ -89,7 +89,11 @@ equivocado <- data%>%mutate(equivocado=if_else(no_acepta == "2",1,0,missing = 0)
 data$rechazos <- sum(rechazos)
 data$equivocado <- sum(equivocado)
 
-# Filtrar pilotos
+# Filtrar pilotos y datos incorrectos
+
+# data <- data %>%
+# filter(!KEY %in% c("KEY1","KEY2"))
+#
 
 data <- data %>%
   filter(username != "anonymousUser")
