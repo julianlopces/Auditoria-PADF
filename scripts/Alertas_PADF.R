@@ -97,7 +97,9 @@ data <- data %>%
 
 # Levantar alertas
 
-data <- data %>% filter(consent ==  1)%>%mutate(duration_minutes = round(as.numeric(duration)/60,2),
+data <- data
+
+alertas <- data %>% filter(consent ==  1)%>%mutate(duration_minutes = round(as.numeric(duration)/60,2),
                                                 num_cel = id_encuestado)
 
 
@@ -105,7 +107,7 @@ data <- data %>% filter(consent ==  1)%>%mutate(duration_minutes = round(as.nume
 
 # Flag duración
 
-alertas <- data %>%
+alertas <- alertas %>%
   mutate(
     flag_duration_mas = if_else((duration_minutes - median(duration_minutes)) / sd(duration_minutes) > 1 & 
                                   consent == 1, 1, 0,missing = 0),
