@@ -628,6 +628,91 @@ alertas <- alertas %>%
          saltos_irregulares = if_else(flag_saltos == 1,"Sí","No"),
          valores_extremos = if_else(flag_extreme_values == 1, "Sí", "No")) 
 
+# Indicadores
 
+library(dplyr)
+library(tibble)
+
+# Metas manuales por encuestador
+metas <- tribble(
+  ~username,          ~meta_tratamiento,
+  "hector.pino",              58,
+  "gabriela.lopez",           30,
+  "jordan.macias",            18,
+  "jessica.perez",            29,
+  "patricia.perez",           19,
+  "melanie.leon",             24,
+  "jean.olaya",               50,
+  "made.moyano",              14,
+  "abi.guanoluisa",            3
+)
+
+# Copia segura de columnas mínimas
+cols_min <- c("username","id_encuestado","consent","no_acepta","evento_padf")
+faltan <- setdiff(cols_min, names(data))
+if (length(faltan) > 0) stop("Faltan columnas en `data`: ", paste(faltan, collapse = ", "))
+
+data_src <- data %>%
+  select(all_of(cols_min)) %>%
+  mutate(
+    consent_i   = suppressWarnings(as.integer(consent)),     # 1 si completa
+    no_acepta_i = suppressWarnings(as.integer(no_acepta)),   # 1,2,3,4 o NA
+    trat_flag   = suppressWarnings(as.integer(evento_padf))  # 1=tratamiento, 0=control
+  )
+
+# Un registro por caso de tratamiento:
+# - se asigna al primer encuestador que lo tocó
+# - se toma el último estado no_acepta visto
+casos_trat <- data_src %>%
+  filter(trat_flag == 1L, username != "anonymousUser") %>%
+  group_by(id_encuestado) %>%
+  summarise(
+    username_asignado = dplyr::first(username),
+    completado        = as.integer(any(consent_i == 1, na.rm = TRUE)),
+    ultimo_no_acepta  = dplyr::last(no_acepta_i[!is.na(no_acepta_i)], default = NA_integer_),
+    .groups = "drop"
+  )
+
+# Agregados por encuestador y métricas finales
+progreso_trat_enc <- casos_trat %>%
+  group_by(username_asignado) %>%
+  summarise(
+    llamados    = dplyr::n(),                                   # casos únicos tocados
+    completadas = sum(completado, na.rm = TRUE),                # completas
+    no_contesta = sum(ultimo_no_acepta == 1, na.rm = TRUE),
+    equivocado  = sum(ultimo_no_acepta == 2, na.rm = TRUE),
+    reagendar   = sum(ultimo_no_acepta == 3, na.rm = TRUE),
+    no_desea    = sum(ultimo_no_acepta == 4, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  rename(username = username_asignado) %>%
+  right_join(metas, by = "username") %>%                        # mantener todos los de metas
+  mutate(
+    llamados                 = coalesce(llamados, 0L),
+    completadas              = coalesce(completadas, 0L),
+    no_contesta              = coalesce(no_contesta, 0L),
+    equivocado               = coalesce(equivocado,  0L),
+    reagendar                = coalesce(reagendar,   0L),
+    no_desea                 = coalesce(no_desea,    0L),
+    meta_tratamiento         = coalesce(meta_tratamiento, 0L),
+    
+    # Meta efectiva: meta original menos "no desea"
+    meta_efectiva            = pmax(meta_tratamiento - no_desea, 0L),
+    
+    # Avances y pendientes
+    avance_llamados          = if_else(meta_tratamiento > 0, llamados    / meta_tratamiento, NA_real_),
+    avance_completadas       = if_else(meta_efectiva      > 0, completadas / meta_efectiva,   NA_real_),
+    pendientes_por_llamar    = pmax(meta_tratamiento - llamados,     0L),
+    pendientes_por_completar = pmax(meta_efectiva      - completadas, 0L)
+  ) %>%
+  select(
+    username,
+    meta_tratamiento, meta_efectiva,
+    llamados, completadas,
+    avance_llamados, avance_completadas,
+    pendientes_por_llamar, pendientes_por_completar,
+    no_contesta, equivocado, reagendar, no_desea
+  ) %>%
+  arrange(username)
 
 
