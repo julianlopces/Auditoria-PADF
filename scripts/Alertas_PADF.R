@@ -91,13 +91,18 @@ data$equivocado <- sum(equivocado)
 
 # Filtrar pilotos y datos incorrectos
 
-# data <- data %>%
-# filter(!KEY %in% c("KEY1","KEY2"))
-#
+data <- data %>%
+filter(!KEY %in% c("uuid:505ab3b3-96d0-447e-967a-6a8676e50642"))
+
 
 data <- data %>%
   filter(username != "anonymousUser")
 
+# Remmplazar nombres 
+
+data <- data %>%
+  mutate(nombre = if_else(KEY == "uuid:aefbfdda-8aff-4c11-9630-1245b6d1f74b",
+                          "Nelly Aracely Toscano Rivera", nombre))
 
 # Levantar alertas
 
@@ -714,5 +719,3 @@ progreso_trat_enc <- casos_trat %>%
     no_contesta, equivocado, reagendar, no_desea
   ) %>%
   arrange(username)
-
-
