@@ -732,3 +732,5 @@ progreso_trat_enc <- metas %>%
     no_contesta, equivocado, reagendar, no_desea
   ) %>%
   arrange(username)
+
+
