@@ -633,4 +633,102 @@ alertas <- alertas %>%
          saltos_irregulares = if_else(flag_saltos == 1,"Sí","No"),
          valores_extremos = if_else(flag_extreme_values == 1, "Sí", "No")) 
 
+# Indicadores
 
+library(dplyr)
+library(tibble)
+
+# 1) Metas manuales
+metas <- tribble(
+  ~username,          ~meta_tratamiento,
+  "hector.pino", 58,
+  "gabriela.lopez", 30,
+  "jordan.macias", 18,
+  "jessica.perez", 29,
+  "patricia.perez", 19,
+  "melanie.leon", 24,
+  "jean.olaya", 50,
+  "made.moyano", 14,
+  "abi.guanoluisa", 3
+)
+
+# 2) Columnas mínimas (incluye acepta_llamada) y copia segura
+cols_min <- c("username","id_encuestado","acepta_llamada","consent","no_acepta","evento_padf")
+faltan <- setdiff(cols_min, names(data))
+if (length(faltan) > 0) stop("Faltan columnas en `data`: ", paste(faltan, collapse=", "))
+
+data_src <- data %>%
+  mutate(.row = dplyr::row_number()) %>%         # índice de orden real del archivo
+  select(all_of(c(cols_min, ".row"))) %>%
+  mutate(
+    acepta_llamada_i = suppressWarnings(as.integer(acepta_llamada)),  # 1 sí, 0 no
+    consent_i        = suppressWarnings(as.integer(consent)),         # 1 consiente, 2 no
+    no_acepta_i      = suppressWarnings(as.integer(no_acepta)),       # 1..4
+    trat_flag        = suppressWarnings(as.integer(evento_padf))      # 1=tratamiento, 0=control
+  ) %>%
+  filter(trat_flag == 1L, username != "anonymousUser")
+
+# 3) Encargado por primer contacto (evita doble conteo entre encuestadores)
+primer_contacto <- data_src %>%
+  arrange(id_encuestado, .row) %>%
+  group_by(id_encuestado) %>%
+  summarise(username_asignado = first(username[!is.na(username)]), .groups = "drop")
+
+# 4) Última fila real del caso para definir estado final (excluyente)
+ultima_fila <- data_src %>%
+  group_by(id_encuestado) %>%
+  slice_max(.row, n = 1, with_ties = FALSE) %>%
+  ungroup() %>%
+  mutate(
+    estado_final = dplyr::case_when(
+      consent_i == 1L                                        ~ "completadas",      # encuesta hecha
+      acepta_llamada_i == 1L & consent_i == 2L               ~ "no_desea",         # rechazó en consentimiento
+      acepta_llamada_i == 0L & no_acepta_i == 1L             ~ "no_contesta",
+      acepta_llamada_i == 0L & no_acepta_i == 2L             ~ "equivocado",
+      acepta_llamada_i == 0L & no_acepta_i == 3L             ~ "reagendar",
+      acepta_llamada_i == 0L & no_acepta_i == 4L             ~ "no_desea",
+      TRUE                                                   ~ "no_contesta"       # respaldo; no debería ocurrir si siempre codifican
+    )
+  ) %>%
+  select(id_encuestado, estado_final)
+
+# 5) Caso final = primer encuestador + estado final (una fila por caso)
+casos_trat <- primer_contacto %>%
+  left_join(ultima_fila, by = "id_encuestado")
+
+# 6) Agregados por encuestador (categorías excluyentes)
+resumen_enc <- casos_trat %>%
+  group_by(username_asignado) %>%
+  summarise(
+    llamados    = n(),
+    completadas = sum(estado_final == "completadas"),
+    no_contesta = sum(estado_final == "no_contesta"),
+    equivocado  = sum(estado_final == "equivocado"),
+    reagendar   = sum(estado_final == "reagendar"),
+    no_desea    = sum(estado_final == "no_desea"),
+    .groups = "drop"
+  ) %>%
+  rename(username = username_asignado)
+
+# 7) Métricas finales (sin forzar nada)
+progreso_trat_enc <- metas %>%
+  left_join(resumen_enc, by = "username") %>%
+  mutate(
+    across(c(llamados, completadas, no_contesta, equivocado, reagendar, no_desea),
+           ~coalesce(., 0L)),
+    meta_tratamiento         = coalesce(meta_tratamiento, 0L),
+    meta_efectiva            = pmax(meta_tratamiento - no_desea, 0L),
+    avance_llamados          = if_else(meta_tratamiento > 0, llamados   / meta_tratamiento, NA_real_),
+    avance_completadas       = if_else(meta_efectiva      > 0, completadas/ meta_efectiva,   NA_real_),
+    pendientes_por_llamar    = pmax(meta_tratamiento - llamados,    0L),
+    pendientes_por_completar = pmax(meta_efectiva      - completadas, 0L)
+  ) %>%
+  select(
+    username,
+    meta_tratamiento, meta_efectiva,
+    llamados, completadas,
+    avance_llamados, avance_completadas,
+    pendientes_por_llamar, pendientes_por_completar,
+    no_contesta, equivocado, reagendar, no_desea
+  ) %>%
+  arrange(username)
