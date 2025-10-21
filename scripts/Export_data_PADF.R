@@ -27,7 +27,7 @@ export_sheet <- function(df, ss, sheet_name, label = sheet_name, pause = 0) {
 export_sheet(alertas,             sheet, "alertas",            label = "alertas",                 pause = 5)
 export_sheet(data,              sheet, "data_raw",           label = "datos crudos",            pause = 5)
 export_sheet(tracking,              sheet, "tracking",           label = "tracking",            pause = 5)
-export_sheet(progreso_trat_enc,              sheet, "Avance_EventoPADF",           label = "Avance",            pause = 5)
+export_sheet(progreso_trat_enc, sheet, "avance_tratamiento", label = "progreso_trat", pause = 5)
 message("✅ Todos los datos fueron exportados exitosamente.")
 
 
