@@ -638,7 +638,7 @@ alertas <- alertas %>%
 library(dplyr)
 library(tibble)
 
-# Metas manuales por encuestador
+# 1) Metas manuales por encuestador
 metas <- tribble(
   ~username,          ~meta_tratamiento,
   "hector.pino",              58,
@@ -652,46 +652,66 @@ metas <- tribble(
   "abi.guanoluisa",            3
 )
 
-# Copia segura de columnas mínimas
-cols_min <- c("username","id_encuestado","consent","no_acepta","evento_padf")
+# 2) Copia segura de columnas mínimas (agrego 'acepta_llamada')
+cols_min <- c("username","id_encuestado","consent","acepta_llamada","no_acepta","evento_padf")
 faltan <- setdiff(cols_min, names(data))
 if (length(faltan) > 0) stop("Faltan columnas en `data`: ", paste(faltan, collapse = ", "))
 
 data_src <- data %>%
   select(all_of(cols_min)) %>%
   mutate(
-    consent_i   = suppressWarnings(as.integer(consent)),     # 1 si completa
-    no_acepta_i = suppressWarnings(as.integer(no_acepta)),   # 1,2,3,4 o NA
-    trat_flag   = suppressWarnings(as.integer(evento_padf))  # 1=tratamiento, 0=control
+    consent_i        = suppressWarnings(as.integer(consent)),         # 1=consentido
+    acepta_llamada_i = suppressWarnings(as.integer(acepta_llamada)),  # 1=acepta llamada, 0=no
+    no_acepta_i      = suppressWarnings(as.integer(no_acepta)),       # 1..4 o NA
+    trat_flag        = suppressWarnings(as.integer(evento_padf))      # 1=tratamiento, 0=control
   )
 
-# Un registro por caso de tratamiento:
-# - se asigna al primer encuestador que lo tocó
-# - se toma el último estado no_acepta visto
+# 3) Un registro por caso (TRATAMIENTO) y estado FINAL EXCLUYENTE
+#    - Asignación por primer encuestador que lo tocó
+#    - Estado final por últimos valores reportados
 casos_trat <- data_src %>%
   filter(trat_flag == 1L, username != "anonymousUser") %>%
   group_by(id_encuestado) %>%
   summarise(
-    username_asignado = dplyr::first(username),
-    completado        = as.integer(any(consent_i == 1, na.rm = TRUE)),
-    ultimo_no_acepta  = dplyr::last(no_acepta_i[!is.na(no_acepta_i)], default = NA_integer_),
-    .groups = "drop"
-  )
-
-# Agregados por encuestador y métricas finales
-progreso_trat_enc <- casos_trat %>%
-  group_by(username_asignado) %>%
-  summarise(
-    llamados    = dplyr::n(),                                   # casos únicos tocados
-    completadas = sum(completado, na.rm = TRUE),                # completas
-    no_contesta = sum(ultimo_no_acepta == 1, na.rm = TRUE),
-    equivocado  = sum(ultimo_no_acepta == 2, na.rm = TRUE),
-    reagendar   = sum(ultimo_no_acepta == 3, na.rm = TRUE),
-    no_desea    = sum(ultimo_no_acepta == 4, na.rm = TRUE),
+    username_asignado   = dplyr::first(username),
+    ult_consent         = dplyr::last(consent_i[!is.na(consent_i)], default = NA_integer_),
+    ult_acepta_llamada  = dplyr::last(acepta_llamada_i[!is.na(acepta_llamada_i)], default = NA_integer_),
+    ult_no_acepta       = dplyr::last(no_acepta_i[!is.na(no_acepta_i)], default = NA_integer_),
     .groups = "drop"
   ) %>%
-  rename(username = username_asignado) %>%
-  right_join(metas, by = "username") %>%                        # mantener todos los de metas
+  mutate(
+    estado_final = dplyr::case_when(
+      # Completa por consentimiento
+      !is.na(ult_consent)        & ult_consent == 1L                    ~ "completadas",
+      # Rechazo en consentimiento después de aceptar llamada
+      !is.na(ult_acepta_llamada) & ult_acepta_llamada == 1L & !is.na(ult_consent) & ult_consent == 2L ~ "no_desea",
+      # No aceptó llamada -> usar no_acepta 1..4
+      !is.na(ult_acepta_llamada) & ult_acepta_llamada == 0L & ult_no_acepta == 1L ~ "no_contesta",
+      !is.na(ult_acepta_llamada) & ult_acepta_llamada == 0L & ult_no_acepta == 2L ~ "equivocado",
+      !is.na(ult_acepta_llamada) & ult_acepta_llamada == 0L & ult_no_acepta == 3L ~ "reagendar",
+      !is.na(ult_acepta_llamada) & ult_acepta_llamada == 0L & ult_no_acepta == 4L ~ "no_desea",
+      # Fallback para que no queden "fantasmas"
+      TRUE ~ "no_contesta"
+    )
+  )
+
+# 4) Agregados por encuestador usando estado_final (categorías excluyentes)
+resumen_enc <- casos_trat %>%
+  group_by(username_asignado) %>%
+  summarise(
+    llamados    = n(),                                                   # casos únicos
+    completadas = sum(estado_final == "completadas", na.rm = TRUE),
+    no_contesta = sum(estado_final == "no_contesta", na.rm = TRUE),
+    equivocado  = sum(estado_final == "equivocado",  na.rm = TRUE),
+    reagendar   = sum(estado_final == "reagendar",   na.rm = TRUE),
+    no_desea    = sum(estado_final == "no_desea",    na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  rename(username = username_asignado)
+
+# 5) Métricas finales + meta efectiva y pendientes
+progreso_trat_enc <- metas %>%
+  left_join(resumen_enc, by = "username") %>%
   mutate(
     llamados                 = coalesce(llamados, 0L),
     completadas              = coalesce(completadas, 0L),
@@ -701,7 +721,7 @@ progreso_trat_enc <- casos_trat %>%
     no_desea                 = coalesce(no_desea,    0L),
     meta_tratamiento         = coalesce(meta_tratamiento, 0L),
     
-    # Meta efectiva: meta original menos "no desea"
+    # Meta efectiva: meta original menos “no desea” (incluye rechazo en consentimiento)
     meta_efectiva            = pmax(meta_tratamiento - no_desea, 0L),
     
     # Avances y pendientes
@@ -719,3 +739,4 @@ progreso_trat_enc <- casos_trat %>%
     no_contesta, equivocado, reagendar, no_desea
   ) %>%
   arrange(username)
+
