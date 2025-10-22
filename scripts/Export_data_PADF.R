@@ -28,6 +28,7 @@ export_sheet(alertas,             sheet, "alertas",            label = "alertas"
 export_sheet(data,              sheet, "data_raw",           label = "datos crudos",            pause = 5)
 export_sheet(tracking,              sheet, "tracking",           label = "tracking",            pause = 5)
 export_sheet(progreso_trat_enc,              sheet, "Avance_EventoPADF",           label = "avancetratamiento",            pause = 5)
+export_sheet(progreso_ctrl_enc,              sheet, "Avance_NoPADF",           label = "avancecontrol",            pause = 5)
 message("✅ Todos los datos fueron exportados exitosamente.")
 
 
