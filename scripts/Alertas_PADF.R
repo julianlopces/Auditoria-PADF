@@ -641,15 +641,15 @@ library(tibble)
 # 1) Metas manuales
 metas <- tribble(
   ~username,          ~meta_tratamiento,
-  "hector.pino", 58,
+  "hector.pino", 64,
   "gabriela.lopez", 30,
-  "jordan.macias", 18,
-  "jessica.perez", 29,
-  "patricia.perez", 19,
-  "melanie.leon", 24,
-  "jean.olaya", 50,
-  "made.moyano", 14,
-  "abi.guanoluisa", 3
+  "jordan.macias", 23,
+  "jessica.perez", 35,
+  "patricia.perez", 25,
+  "melanie.leon", 26,
+  "jean.olaya", 56,
+  "made.moyano", 19,
+  "abi.guanoluisa", 8
 )
 
 # 2) Columnas mínimas (incluye acepta_llamada) y copia segura
@@ -743,14 +743,15 @@ library(tibble)
 metas_ctrl <- tribble(
   ~username,          ~meta_control,
   "hector.pino", 44,
-  "gabriela.lopez", 27,
+  "gabriela.lopez", 14,
   "jordan.macias", 139,
   "jessica.perez", 74,
-  "patricia.perez", 84,
+  "patricia.perez", 93,
   "melanie.leon", 131,
-  "jean.olaya", 53,
+  "jean.olaya", 62,
   "made.moyano", 89,
   "abi.guanoluisa", 132
+  "jacqueline.zamb", 2
 )
 
 # 2) Columnas mínimas y copia segura (incluye acepta_llamada)
