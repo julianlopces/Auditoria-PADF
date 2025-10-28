@@ -742,16 +742,16 @@ library(tibble)
 # 1) Metas manuales (edítalas si cambia la meta de control)
 metas_ctrl <- tribble(
   ~username,          ~meta_control,
-  "hector.pino", 44,
-  "gabriela.lopez", 14,
-  "jordan.macias", 139,
-  "jessica.perez", 74,
-  "patricia.perez", 93,
-  "melanie.leon", 131,
-  "jean.olaya", 62,
-  "made.moyano", 89,
-  "abi.guanoluisa", 132
-  "jacqueline.zamb", 2
+  "hector.pino",         44,
+  "gabriela.lopez",      14,
+  "jordan.macias",      139,
+  "jessica.perez",       74,
+  "patricia.perez",      93,
+  "melanie.leon",       131,
+  "jean.olaya",          62,
+  "made.moyano",         89,
+  "abi.guanoluisa",     132,   
+  "jacqueline.zamb",      2    
 )
 
 # 2) Columnas mínimas y copia segura (incluye acepta_llamada)
