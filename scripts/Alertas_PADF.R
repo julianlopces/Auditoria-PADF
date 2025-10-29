@@ -92,7 +92,7 @@ data$equivocado <- sum(equivocado)
 # Filtrar pilotos y datos incorrectos
 
 data <- data %>%
-filter(!KEY %in% c("uuid:505ab3b3-96d0-447e-967a-6a8676e50642"))
+filter(!KEY %in% c("uuid:505ab3b3-96d0-447e-967a-6a8676e50642","uuid:50f73ada-f856-4229-a765-9d6e84eccd0c"))
 
 
 data <- data %>%
